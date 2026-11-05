@@ -56,3 +56,9 @@ Do not commit generated `.o`, index, database, or result files.
 
 Run `make clean && make` before packaging. The legacy PF regression test and AM
 smoke tests should be run from a clean checkout before submission.
+
+## Review order
+
+The changes are intentionally split into focused stacked pull requests: PF
+API, replacement policy, statistics, workload experiments, AM bulk loading,
+configuration, and documentation.
