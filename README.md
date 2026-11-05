@@ -51,3 +51,8 @@ with its source record ID.
 
 `config.example` contains the runtime settings used by the experiments.
 Do not commit generated `.o`, index, database, or result files.
+
+## Validation
+
+Run `make clean && make` before packaging. The legacy PF regression test and AM
+smoke tests should be run from a clean checkout before submission.
