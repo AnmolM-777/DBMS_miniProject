@@ -34,8 +34,6 @@ typedef struct PFftab_ele {
 } PFftab_ele;
 
 /************************** Buffer Page Decls *********************/
-#define PF_MAX_BUFS	20	/* max # of buffers */
-
 /* buffer page decl */
 typedef struct PFbpage {
 	struct PFbpage *nextpage;	/* next in the linked list of
@@ -78,3 +76,4 @@ extern PFbufGet();
 extern PFbufUnfix();
 extern PFbufalloc();
 extern PFbufReleaseFile();
+extern PFbufSetConfig();
