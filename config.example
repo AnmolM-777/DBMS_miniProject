@@ -1,0 +1,5 @@
+# Runtime experiment configuration
+buffer_pages=8
+replacement_strategy=LRU
+student_file=data/student.txt
+max_record_length=128
