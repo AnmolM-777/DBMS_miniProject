@@ -6,11 +6,29 @@ PFbufPrint() */
 #include "pftypes.h"
 
 static int PFnumbpage = 0;	/* # of buffer pages in memory */
+static int PFbufCapacity = 20;
+static PFReplacementStrategy PFreplacement = PF_REPLACEMENT_LRU;
 static PFbpage *PFfirstbpage= NULL;	/* ptr to first buffer page, or NULL */
 static PFbpage *PFlastbpage = NULL;	/* ptr to last buffer page, or NULL */
 static PFbpage *PFfreebpage= NULL;	/* list of free buffer pages */
 
 extern char *malloc();
+extern PFStats PFstats;
+
+int PFbufSetConfig(capacity, strategy)
+int capacity;
+int strategy;
+{
+	if (capacity < PF_MIN_BUFS || capacity > PF_MAX_CONFIG_BUFS)
+		return(PFE_NOBUF);
+	if (strategy != PF_REPLACEMENT_LRU && strategy != PF_REPLACEMENT_MRU)
+		return(PFE_UNIX);
+	if (PFnumbpage > capacity)
+		return(PFE_NOBUF);
+	PFbufCapacity = capacity;
+	PFreplacement = (PFReplacementStrategy)strategy;
+	return(PFE_OK);
+}
 
 static void PFbufInsertFree(bpage)
 PFbpage *bpage;
@@ -132,7 +150,7 @@ int error;		/* error value returned*/
 		*bpage = PFfreebpage;
 		PFfreebpage = (*bpage)->nextpage;
 	}
-	else if (PFnumbpage < PF_MAX_BUFS){
+	else if (PFnumbpage < PFbufCapacity){
 		/* We have not reached max buffer limit, so
 		malloc() a new one */
 		if ((*bpage=(PFbpage *)malloc(sizeof(PFbpage)))==NULL){
@@ -150,7 +168,12 @@ int error;		/* error value returned*/
 
 		*bpage = NULL;		/* set initial return value */
 
-		for (tbpage=PFlastbpage;tbpage!=NULL;tbpage=tbpage->prevpage){
+		if (PFreplacement == PF_REPLACEMENT_MRU)
+			tbpage = PFfirstbpage;
+		else
+			tbpage = PFlastbpage;
+		for (;tbpage!=NULL;tbpage=(PFreplacement == PF_REPLACEMENT_MRU) ?
+				tbpage->nextpage : tbpage->prevpage){
 			if (!tbpage->fixed)
 				/* found a page that can be swapped out */
 				break;
@@ -267,6 +290,8 @@ int error;
 
 	/* Fix the page in the buffer then return*/
 	bpage->fixed = TRUE;
+	PFstats.logical_reads++;
+	PFstats.pages_accessed++;
 	*fpage = &bpage->fpage;
 	return(PFE_OK);
 }
@@ -305,7 +330,10 @@ PFbpage *bpage;
 
 	if (dirty)
 		/* mark this page dirty */
+	{
 		bpage->dirty = TRUE;
+		PFstats.logical_writes++;
+	}
 	
 	/* unfix the page */
 	bpage->fixed = FALSE;
@@ -463,6 +491,8 @@ PFbpage *bpage;	/* pointer to the bpage we are looking for */
 	}
 
 	/* mark this page dirty */
+	if (!bpage->dirty)
+		PFstats.logical_writes++;
 	bpage->dirty = TRUE;
 
 	/* make this page head of the list of buffers*/
