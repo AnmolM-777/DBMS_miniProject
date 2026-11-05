@@ -12,6 +12,7 @@
 #endif
 
 int PFerrno = PFE_OK;	/* last error message */
+PFStats PFstats;
 
 static PFftab_ele PFftab[PF_FTAB_SIZE]; /* table of opened files */
 
@@ -122,6 +123,7 @@ int error;
 		else	PFerrno = PFE_INCOMPLETEREAD;
 		return(PFerrno);
 	}
+	PFstats.physical_reads++;
 
 	return(PFE_OK);
 }
@@ -160,6 +162,7 @@ int error;
 		else	PFerrno = PFE_INCOMPLETEWRITE;
 		return(PFerrno);
 	}
+	PFstats.physical_writes++;
 
 	return(PFE_OK);
 
@@ -183,6 +186,12 @@ GLOBAL VARIABLES MODIFIED:
 *****************************************************************************/
 {
 int i;
+	PFstats.logical_reads = 0;
+	PFstats.logical_writes = 0;
+	PFstats.physical_reads = 0;
+	PFstats.physical_writes = 0;
+	PFstats.pages_accessed = 0;
+	PFbufSetConfig(20, PF_REPLACEMENT_LRU);
 	/* init the hash table */
 	PFhashInit();
 
@@ -190,6 +199,38 @@ int i;
 	for (i=0; i < PF_FTAB_SIZE; i++){
 		PFftab[i].fname = NULL;
 	}
+
+}
+
+void PF_InitWithConfig(bufferPages, strategy)
+int bufferPages;
+int strategy;
+{
+	PF_Init();
+	PF_SetBufferConfig(bufferPages, strategy);
+}
+
+int PF_SetBufferConfig(bufferPages, strategy)
+int bufferPages;
+int strategy;
+{
+	return(PFbufSetConfig(bufferPages, strategy));
+}
+
+void PF_GetStats(stats)
+PFStats *stats;
+{
+	if (stats != NULL)
+		*stats = PFstats;
+}
+
+void PF_ResetStats()
+{
+	PFstats.logical_reads = 0;
+	PFstats.logical_writes = 0;
+	PFstats.physical_reads = 0;
+	PFstats.physical_writes = 0;
+	PFstats.pages_accessed = 0;
 }
 
 PF_CreateFile(fname)
@@ -335,6 +376,27 @@ int fd; /* file descriptor */
 	}
 
 	return(fd);
+}
+
+int PF_OpenFileWithConfig(fname, bufferPages, strategy)
+char *fname;
+int bufferPages;
+int strategy;
+{
+	int error = PF_SetBufferConfig(bufferPages, strategy);
+	if (error != PFE_OK) {
+		PFerrno = error;
+		return(error);
+	}
+	return(PF_OpenFile(fname));
+}
+
+int PF_OpenFileEx(fname, strategy, bufferPages)
+char *fname;
+int strategy;
+int bufferPages;
+{
+	return(PF_OpenFileWithConfig(fname, bufferPages, strategy));
 }
 
 PF_CloseFile(fd)
@@ -698,6 +760,17 @@ RETURN VALUE:
 	}
 
 	return(PFbufUnfix(fd,pagenum,dirty));
+}
+
+int PF_MarkDirty(fd, pagenum)
+int fd;
+int pagenum;
+{
+	if (PFinvalidFd(fd)) {
+		PFerrno = PFE_FD;
+		return(PFerrno);
+	}
+	return(PFbufUsed(fd, pagenum));
 }
 
 /* error messages */
