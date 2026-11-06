@@ -1,0 +1,7 @@
+experiment,records,mode,seconds,logical_page_accesses,physical_reads,physical_writes,correct_point_queries
+file_order_build,17813,0,0.021132,50492,289,748,0
+file_order_lookup,100,0,0.003398,500,98,0,100
+incremental_shuffled_build,17813,1,0.053679,50172,15156,15085,0
+incremental_shuffled_lookup,100,1,0.003757,500,115,0,100
+bottom_up_bulk_load,17813,3,0.001056,289,289,583,0
+bottom_up_bulk_load_lookup,100,3,0.003359,500,41,0,100
